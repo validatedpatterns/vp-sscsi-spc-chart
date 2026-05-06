@@ -1,12 +1,12 @@
 # vp-sscsi-spc
 
-![Version: 0.1.4](https://img.shields.io/badge/Version-0.1.4-informational?style=flat-square)
+![Version: 0.1.5](https://img.shields.io/badge/Version-0.1.5-informational?style=flat-square)
 
 Library chart for app-level Vault SecretProviderClass rendering with hub, spoke, and external Vault support. Cluster CA material is managed by a separate cluster-wide chart.
 
 This chart is the **library for `SecretProviderClass` only**, **one dependency per application chart** that consumes Vault via SSCSI.
 
-**Vault CSI provider DaemonSet and TLS trust on the provider** (for example projected proxy cluster CA) are installed by **`openshift-sscsi-vault`** (chart **0.1.0+**), not this library.
+**Vault CSI provider DaemonSet and TLS trust on the provider** (for example projected proxy cluster CA) are installed by **`openshift-sscsi-vault`** (chart **0.2.0+**), not this library. The legacy **`vp-vault-csi-provider`** chart is superseded by **`openshift-sscsi-vault`** for new installs.
 
 ### Scope
 
@@ -15,16 +15,10 @@ This chart renders **only** `SecretProviderClass` YAML (named templates or optio
 - Hub-cluster Vault auth (`hub` mount + role)
 - Spoke-cluster auth to centralized Vault (`clusterDomain` mount + role)
 - External Vault endpoint override (`vault.externalAddress`)
-- Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`)
+- Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`), or **`tls.projectedClusterCa.enabled: true`** to derive the path for **openshift-sscsi-vault**'s projected CNO/proxy bundle (same defaults as that chart's `syncProviderCaConfigMap`)
 - Optional app-key driven workload auth lookup from `clusterGroup.applications[*].ssCsiWorkloadAuth`
 
-This chart does not install the CSI provider or mount trust bundles; set **`tls.vaultCACertPath`** to match whatever path the **provider** exposes (for example under **`/etc/pki/vault-ca`** from **`openshift-sscsi-vault`** defaults).
-
-### Notable changes
-
-#### v0.1.4
-
-- **Hub `roleName` without `auth`:** Hub-style `SecretProviderClass` rendering no longer dereferences `ocpSecretsStoreCsiVault.auth.roleName` when the `auth` block is omitted. Parent charts can omit `ocpSecretsStoreCsiVault.auth` entirely; the template defaults hub `roleName` to `hub-role` (still overridden by `ssCsiWorkloadAuth` when resolved). Previously, `coalesce` evaluated every argument and triggered a nil-pointer error if `auth` was missing.
+This chart does not install the CSI provider or mount trust bundles. Either set **`tls.vaultCACertPath`** explicitly, or enable **`tls.projectedClusterCa`** so **`spec.parameters.vaultCACertPath`** points at **`/etc/pki/vault-ca/ca-bundle.crt`** (CNO-injected proxy/cluster bundle) or **`.../vault-tls-ca.pem`** when **`injectTrustedCabundle: false`**, matching **openshift-sscsi-vault** defaults. Named template **`vp_sscsi_spc.projectedVaultCACertPath`** returns that path for custom includes.
 
 ### Usage from parent charts
 
@@ -65,7 +59,9 @@ When `ocpSecretsStoreCsiVault.applicationKey` is set, the chart reads
 | ocpSecretsStoreCsiVault.secretProviderClass.installDefaultManifests | bool | `false` | When true, render default SPC manifests from `templates/install-default-manifests.yaml`. |
 | ocpSecretsStoreCsiVault.secretProviderClass.name | string | `"vault-hub-secrets"` | metadata.name of the SecretProviderClass (referenced from pod volumeAttributes) |
 | ocpSecretsStoreCsiVault.secretProviderClass.namespace | string | `""` | Namespace where the SecretProviderClass is created |
-| ocpSecretsStoreCsiVault.tls | object | `{"vaultCACertPath":"","vaultSkipTLSVerify":"false","vaultTLSServerName":""}` | TLS options for the Vault CSI provider. This chart only references an existing trust path and does not create CA material. |
+| ocpSecretsStoreCsiVault.tls | object | `{"projectedClusterCa":{"enabled":false,"injectTrustedCabundle":true,"keyInConfigMap":"vault-tls-ca.pem","mountDir":"/etc/pki/vault-ca","trustedCabundleDataKey":"ca-bundle.crt"},"vaultCACertPath":"","vaultSkipTLSVerify":"false","vaultTLSServerName":""}` | TLS options for the Vault CSI provider. This chart only references an existing trust path and does not create CA material. |
+| ocpSecretsStoreCsiVault.tls.projectedClusterCa | object | `{"enabled":false,"injectTrustedCabundle":true,"keyInConfigMap":"vault-tls-ca.pem","mountDir":"/etc/pki/vault-ca","trustedCabundleDataKey":"ca-bundle.crt"}` | When `enabled` is true and `vaultCACertPath` is empty, set `vaultCACertPath` to the bundle file under **openshift-sscsi-vault** defaults (CNO proxy merge `ca-bundle.crt` vs PEM `vault-tls-ca.pem`). Align these fields with `ocpSecretsStoreCsiVault.caProvider.syncProviderCaConfigMap` on that chart. |
+| ocpSecretsStoreCsiVault.tls.vaultCACertPath | string | `""` | Explicit PEM path on the CSI provider pod. When non-empty, wins over `projectedClusterCa`. |
 | ocpSecretsStoreCsiVault.vault.externalAddress | string | `""` | If non-empty, used as `spec.parameters.vaultAddress` (external Vault endpoint). |
 | ocpSecretsStoreCsiVault.vault.hubMountPath | string | `"hub"` | Vault Kubernetes auth mount path for hub-style auth |
 | ocpSecretsStoreCsiVault.workloadAuthIndex | int | `0` | Index into `clusterGroup.applications[applicationKey].ssCsiWorkloadAuth` when multiple entries are present. |

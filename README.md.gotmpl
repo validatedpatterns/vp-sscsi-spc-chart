@@ -7,7 +7,7 @@
 
 This chart is the **library for `SecretProviderClass` only**, **one dependency per application chart** that consumes Vault via SSCSI.
 
-**Vault CSI provider DaemonSet and TLS trust on the provider** (for example projected proxy cluster CA) are installed by **`openshift-sscsi-vault`** (chart **0.1.0+**), not this library.
+**Vault CSI provider DaemonSet and TLS trust on the provider** (for example projected proxy cluster CA) are installed by **`openshift-sscsi-vault`** (chart **0.2.0+**), not this library. The legacy **`vp-vault-csi-provider`** chart is superseded by **`openshift-sscsi-vault`** for new installs.
 
 ### Scope
 
@@ -16,16 +16,10 @@ This chart renders **only** `SecretProviderClass` YAML (named templates or optio
 - Hub-cluster Vault auth (`hub` mount + role)
 - Spoke-cluster auth to centralized Vault (`clusterDomain` mount + role)
 - External Vault endpoint override (`vault.externalAddress`)
-- Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`)
+- Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`), or **`tls.projectedClusterCa.enabled: true`** to derive the path for **openshift-sscsi-vault**'s projected CNO/proxy bundle (same defaults as that chart's `syncProviderCaConfigMap`)
 - Optional app-key driven workload auth lookup from `clusterGroup.applications[*].ssCsiWorkloadAuth`
 
-This chart does not install the CSI provider or mount trust bundles; set **`tls.vaultCACertPath`** to match whatever path the **provider** exposes (for example under **`/etc/pki/vault-ca`** from **`openshift-sscsi-vault`** defaults).
-
-### Notable changes
-
-#### v0.1.4
-
-- **Hub `roleName` without `auth`:** Hub-style `SecretProviderClass` rendering no longer dereferences `ocpSecretsStoreCsiVault.auth.roleName` when the `auth` block is omitted. Parent charts can omit `ocpSecretsStoreCsiVault.auth` entirely; the template defaults hub `roleName` to `hub-role` (still overridden by `ssCsiWorkloadAuth` when resolved). Previously, `coalesce` evaluated every argument and triggered a nil-pointer error if `auth` was missing.
+This chart does not install the CSI provider or mount trust bundles. Either set **`tls.vaultCACertPath`** explicitly, or enable **`tls.projectedClusterCa`** so **`spec.parameters.vaultCACertPath`** points at **`/etc/pki/vault-ca/ca-bundle.crt`** (CNO-injected proxy/cluster bundle) or **`.../vault-tls-ca.pem`** when **`injectTrustedCabundle: false`**, matching **openshift-sscsi-vault** defaults. Named template **`vp_sscsi_spc.projectedVaultCACertPath`** returns that path for custom includes.
 
 ### Usage from parent charts
 

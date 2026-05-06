@@ -105,6 +105,28 @@ roleName: {{ $roleName | quote }}
 {{- end }}
 
 {{/*
+Path to the CA file mounted by **openshift-sscsi-vault** (CNO-injected cluster/proxy bundle vs PEM key).
+Driven by `ocpSecretsStoreCsiVault.tls.projectedClusterCa` — keep in sync with that chart's `syncProviderCaConfigMap`.
+Usage: {{ include "vp_sscsi_spc.projectedVaultCACertPath" . }}
+*/}}
+{{- define "vp_sscsi_spc.projectedVaultCACertPath" -}}
+{{- $tls := .Values.ocpSecretsStoreCsiVault.tls | default dict }}
+{{- $p := $tls.projectedClusterCa | default dict }}
+{{- $mount := $p.mountDir | default "/etc/pki/vault-ca" | trim | trimSuffix "/" }}
+{{- $inject := true }}
+{{- if and (hasKey $p "injectTrustedCabundle") (kindIs "bool" $p.injectTrustedCabundle) }}
+{{- $inject = $p.injectTrustedCabundle }}
+{{- end }}
+{{- if $inject }}
+{{- $key := $p.trustedCabundleDataKey | default "ca-bundle.crt" | trim }}
+{{- printf "%s/%s" $mount $key }}
+{{- else }}
+{{- $key := $p.keyInConfigMap | default "vault-tls-ca.pem" | trim }}
+{{- printf "%s/%s" $mount $key }}
+{{- end }}
+{{- end }}
+
+{{/*
 SecretProviderClass for Vault CSI provider (namespaced).
 Expects standard Helm root context with .Values.ocpSecretsStoreCsiVault, .Values.clusterGroup, .Values.global.
 */}}
@@ -155,6 +177,14 @@ spec:
     vaultSkipTLSVerify: {{ $vaultTlsSkip | quote }}
 {{- $tls := .Values.ocpSecretsStoreCsiVault.tls }}
 {{- $vaultCACertPath := $tls.vaultCACertPath | default "" | trim }}
+{{- $proj := $tls.projectedClusterCa | default dict }}
+{{- $projEnabled := false }}
+{{- if and (hasKey $proj "enabled") (kindIs "bool" $proj.enabled) }}
+{{- $projEnabled = $proj.enabled }}
+{{- end }}
+{{- if and $projEnabled (eq $vaultCACertPath "") }}
+{{- $vaultCACertPath = include "vp_sscsi_spc.projectedVaultCACertPath" . | trim }}
+{{- end }}
 {{- if and (ne $vaultTlsSkip "true") (ne $vaultCACertPath "") }}
     vaultCACertPath: {{ $vaultCACertPath | quote }}
 {{- end }}
@@ -162,13 +192,8 @@ spec:
     vaultTLSServerName: {{ .Values.ocpSecretsStoreCsiVault.tls.vaultTLSServerName | quote }}
 {{- end }}
 {{- if $isHubStyleAuth }}
-{{- /* coalesce evaluates all args; .auth may be omitted in parent charts */}}
-{{- $hubAuthRole := "hub-role" }}
-{{- if and .Values.ocpSecretsStoreCsiVault .Values.ocpSecretsStoreCsiVault.auth }}
-{{- $hubAuthRole = .Values.ocpSecretsStoreCsiVault.auth.roleName | default "hub-role" }}
-{{- end }}
     vaultKubernetesMountPath: {{ .Values.ocpSecretsStoreCsiVault.vault.hubMountPath | quote }}
-    roleName: {{ coalesce $workloadAuth.roleName $hubAuthRole "hub-role" | quote }}
+    roleName: {{ coalesce $workloadAuth.roleName .Values.ocpSecretsStoreCsiVault.auth.roleName "hub-role" | quote }}
 {{- else }}
     vaultKubernetesMountPath: {{ $.Values.global.clusterDomain | quote }}
     roleName: {{ coalesce $workloadAuth.roleName (printf "%s-role" $.Values.global.clusterDomain) | quote }}

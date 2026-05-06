@@ -39,8 +39,16 @@ ocpSecretsStoreCsiVault:
   # -- TLS options for the Vault CSI provider. This chart only references an existing trust path and does not create CA material.
   tls:
     vaultSkipTLSVerify: "false"
+    # -- Explicit PEM path on the CSI provider pod. When non-empty, wins over `projectedClusterCa`.
     vaultCACertPath: ""
     vaultTLSServerName: ""
+    # -- When `enabled` is true and `vaultCACertPath` is empty, set `vaultCACertPath` to the bundle file under **openshift-sscsi-vault** defaults (CNO proxy merge `ca-bundle.crt` vs PEM `vault-tls-ca.pem`). Align these fields with `ocpSecretsStoreCsiVault.caProvider.syncProviderCaConfigMap` on that chart.
+    projectedClusterCa:
+      enabled: false
+      mountDir: "/etc/pki/vault-ca"
+      injectTrustedCabundle: true
+      trustedCabundleDataKey: "ca-bundle.crt"
+      keyInConfigMap: "vault-tls-ca.pem"
 
 # -- Global values aligned with openshift-external-secrets chart patterns
 global:
