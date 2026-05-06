@@ -1,0 +1,49 @@
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}
+
+This chart is the app-level SecretProviderClass companion to the cluster-wide Vault CSI chart.
+
+### Scope
+
+This chart renders SecretProviderClass manifests only. Use it from application charts that need:
+
+- Hub-cluster Vault auth (`hub` mount + role)
+- Spoke-cluster auth to centralized Vault (`clusterDomain` mount + role)
+- External Vault endpoint override (`vault.externalAddress`)
+- Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`)
+
+This chart does not create or source CA ConfigMaps. Cluster-wide CA management stays in the cluster component chart.
+
+### Usage from parent charts
+
+Merge values into this chart shape (`ocpSecretsStoreCsiVault`, `global`, `clusterGroup`) and include:
+
+```yaml
+{{`{{- $spcCtx := dict "Chart" $sc.Chart "Capabilities" $sc.Capabilities "Release" $sc.Release "Values" $spcVals }}
+{{- include "vp_sscsi_spc.secretproviderclass" $spcCtx }}
+`}}
+```
+
+For standalone rendering during development/tests, set:
+
+```yaml
+ocpSecretsStoreCsiVault:
+  secretProviderClass:
+    installDefaultManifests: true
+```
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}

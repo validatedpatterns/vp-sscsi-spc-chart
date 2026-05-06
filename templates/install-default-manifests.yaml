@@ -1,0 +1,6 @@
+{{- if .Values.ocpSecretsStoreCsiVault.secretProviderClass.installDefaultManifests }}
+{{- $spc := include "vp_sscsi_spc.secretproviderclass" . | trim }}
+{{- if $spc }}
+{{ $spc }}
+{{- end }}
+{{- end }}
