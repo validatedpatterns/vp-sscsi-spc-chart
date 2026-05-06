@@ -5,11 +5,13 @@
 
 {{ template "chart.description" . }}
 
-This chart is the app-level SecretProviderClass companion to the cluster-wide Vault CSI chart.
+This chart is the **library for `SecretProviderClass` only**, **one dependency per application chart** that consumes Vault via SSCSI.
+
+**Vault CSI provider DaemonSet and TLS trust on the provider** (for example projected proxy cluster CA) are installed by **`openshift-sscsi-vault`** (chart **0.1.0+**), not this library.
 
 ### Scope
 
-This chart renders SecretProviderClass manifests only. Use it from application charts that need:
+This chart renders **only** `SecretProviderClass` YAML (named templates or optional `installDefaultManifests`). Use it from application charts that need:
 
 - Hub-cluster Vault auth (`hub` mount + role)
 - Spoke-cluster auth to centralized Vault (`clusterDomain` mount + role)
@@ -17,7 +19,7 @@ This chart renders SecretProviderClass manifests only. Use it from application c
 - Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`)
 - Optional app-key driven workload auth lookup from `clusterGroup.applications[*].ssCsiWorkloadAuth`
 
-This chart does not create or source CA ConfigMaps. Cluster-wide CA management stays in the cluster component chart.
+This chart does not install the CSI provider or mount trust bundles; set **`tls.vaultCACertPath`** to match whatever path the **provider** exposes (for example under **`/etc/pki/vault-ca`** from **`openshift-sscsi-vault`** defaults).
 
 ### Usage from parent charts
 
