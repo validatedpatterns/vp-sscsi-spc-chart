@@ -2,6 +2,10 @@
 # -- Settings for app-level SecretProviderClass rendering
 # @default -- see nested keys
 ocpSecretsStoreCsiVault:
+  # -- Optional key under `clusterGroup.applications` used to resolve workload auth attributes (`ssCsiWorkloadAuth`).
+  applicationKey: ""
+  # -- Index into `clusterGroup.applications[applicationKey].ssCsiWorkloadAuth` when multiple entries are present.
+  workloadAuthIndex: 0
   secretProviderClass:
     # -- When true, render SecretProviderClass manifests from this chart.
     enabled: true
@@ -10,7 +14,7 @@ ocpSecretsStoreCsiVault:
     # -- metadata.name of the SecretProviderClass (referenced from pod volumeAttributes)
     name: vault-hub-secrets
     # -- Namespace where the SecretProviderClass is created
-    namespace: default
+    namespace: ""
 
   vault:
     # -- If non-empty, used as `spec.parameters.vaultAddress` (external Vault endpoint).

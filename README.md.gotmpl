@@ -15,6 +15,7 @@ This chart renders SecretProviderClass manifests only. Use it from application c
 - Spoke-cluster auth to centralized Vault (`clusterDomain` mount + role)
 - External Vault endpoint override (`vault.externalAddress`)
 - Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`)
+- Optional app-key driven workload auth lookup from `clusterGroup.applications[*].ssCsiWorkloadAuth`
 
 This chart does not create or source CA ConfigMaps. Cluster-wide CA management stays in the cluster component chart.
 
@@ -35,6 +36,12 @@ ocpSecretsStoreCsiVault:
   secretProviderClass:
     installDefaultManifests: true
 ```
+
+When `ocpSecretsStoreCsiVault.applicationKey` is set, the chart reads
+`clusterGroup.applications[applicationKey]` and can derive:
+
+- `metadata.namespace` from app namespace (fallback: release namespace)
+- `spec.parameters.roleName` from `ssCsiWorkloadAuth` (`roleName`/`role` or `cluster + roleSlug`)
 
 {{ template "chart.homepageLine" . }}
 

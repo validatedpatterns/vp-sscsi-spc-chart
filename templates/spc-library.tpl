@@ -39,11 +39,74 @@ false
 {{- end }}
 
 {{/*
+Resolves app-scoped CSI workload auth attributes from clusterGroup.applications.
+Returns a YAML object with:
+- namespace
+- serviceAccountName
+- roleName
+*/}}
+{{- define "vp_sscsi_spc.workloadauth" -}}
+{{- $appKey := .Values.ocpSecretsStoreCsiVault.applicationKey | default "" | trim -}}
+{{- $appCfg := dict -}}
+{{- if and (ne $appKey "") .Values.clusterGroup .Values.clusterGroup.applications (hasKey .Values.clusterGroup.applications $appKey) -}}
+  {{- $appCfg = (index .Values.clusterGroup.applications $appKey) -}}
+{{- end -}}
+{{- $spcNamespace := .Values.ocpSecretsStoreCsiVault.secretProviderClass.namespace | default "" | trim -}}
+{{- $appNamespace := "" -}}
+{{- if and $appCfg (hasKey $appCfg "namespace") -}}
+  {{- $appNamespace = (index $appCfg "namespace" | default "" | toString | trim) -}}
+{{- end -}}
+{{- $resolvedNamespace := coalesce $spcNamespace $appNamespace .Release.Namespace -}}
+{{- $entry := dict -}}
+{{- $entryIdx := .Values.ocpSecretsStoreCsiVault.workloadAuthIndex | default 0 | int -}}
+{{- if lt $entryIdx 0 -}}
+  {{- $entryIdx = 0 -}}
+{{- end -}}
+{{- if and $appCfg (hasKey $appCfg "ssCsiWorkloadAuth") -}}
+  {{- $entries := (index $appCfg "ssCsiWorkloadAuth") -}}
+  {{- if and (kindIs "slice" $entries) (gt (len $entries) $entryIdx) -}}
+    {{- $entry = (index $entries $entryIdx) -}}
+  {{- end -}}
+{{- end -}}
+{{- $serviceAccountName := "" -}}
+{{- if and $entry (hasKey $entry "serviceAccount") -}}
+  {{- $serviceAccountName = (index $entry "serviceAccount" | default "" | toString | trim) -}}
+{{- end -}}
+{{- if and (eq $serviceAccountName "") $entry (hasKey $entry "serviceAccountName") -}}
+  {{- $serviceAccountName = (index $entry "serviceAccountName" | default "" | toString | trim) -}}
+{{- end -}}
+{{- $roleName := "" -}}
+{{- if and $entry (hasKey $entry "roleName") -}}
+  {{- $roleName = (index $entry "roleName" | default "" | toString | trim) -}}
+{{- end -}}
+{{- if and (eq $roleName "") $entry (hasKey $entry "role") -}}
+  {{- $roleName = (index $entry "role" | default "" | toString | trim) -}}
+{{- end -}}
+{{- if and (eq $roleName "") $entry (hasKey $entry "roleSlug") -}}
+  {{- $roleSlug := (index $entry "roleSlug" | default "" | toString | trim) -}}
+  {{- if ne $roleSlug "" -}}
+    {{- $roleCluster := "hub" -}}
+    {{- if and $entry (hasKey $entry "cluster") -}}
+      {{- $roleCluster = (index $entry "cluster" | default "" | toString | trim) -}}
+    {{- end -}}
+    {{- if eq $roleCluster "" -}}
+      {{- $roleCluster = "hub" -}}
+    {{- end -}}
+    {{- $roleName = printf "%s-sscsi-%s" $roleCluster $roleSlug -}}
+  {{- end -}}
+{{- end -}}
+namespace: {{ $resolvedNamespace | quote }}
+serviceAccountName: {{ $serviceAccountName | quote }}
+roleName: {{ $roleName | quote }}
+{{- end }}
+
+{{/*
 SecretProviderClass for Vault CSI provider (namespaced).
 Expects standard Helm root context with .Values.ocpSecretsStoreCsiVault, .Values.clusterGroup, .Values.global.
 */}}
 {{- define "vp_sscsi_spc.secretproviderclass" -}}
 {{- if .Values.ocpSecretsStoreCsiVault.secretProviderClass.enabled }}
+{{- $workloadAuth := include "vp_sscsi_spc.workloadauth" . | fromYaml }}
 {{- $hashicorp_vault_found := false }}
 {{- if and .Values.clusterGroup .Values.clusterGroup.applications }}
 {{- range $_, $app := .Values.clusterGroup.applications }}
@@ -59,7 +122,7 @@ apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
   name: {{ .Values.ocpSecretsStoreCsiVault.secretProviderClass.name }}
-  namespace: {{ .Values.ocpSecretsStoreCsiVault.secretProviderClass.namespace }}
+  namespace: {{ $workloadAuth.namespace | quote }}
 spec:
   provider: vault
 {{- with .Values.ocpSecretsStoreCsiVault.secretObjects }}
@@ -96,10 +159,10 @@ spec:
 {{- end }}
 {{- if $isHubStyleAuth }}
     vaultKubernetesMountPath: {{ .Values.ocpSecretsStoreCsiVault.vault.hubMountPath | quote }}
-    roleName: {{ .Values.ocpSecretsStoreCsiVault.auth.roleName | quote }}
+    roleName: {{ coalesce $workloadAuth.roleName .Values.ocpSecretsStoreCsiVault.auth.roleName "hub-role" | quote }}
 {{- else }}
     vaultKubernetesMountPath: {{ $.Values.global.clusterDomain | quote }}
-    roleName: {{ printf "%s-role" $.Values.global.clusterDomain | quote }}
+    roleName: {{ coalesce $workloadAuth.roleName (printf "%s-role" $.Values.global.clusterDomain) | quote }}
 {{- end }}
     objects: |
 {{- range .Values.ocpSecretsStoreCsiVault.objects }}
