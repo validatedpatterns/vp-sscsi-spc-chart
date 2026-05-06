@@ -56,7 +56,6 @@ Returns a YAML object with:
 {{- if and $appCfg (hasKey $appCfg "namespace") -}}
   {{- $appNamespace = (index $appCfg "namespace" | default "" | toString | trim) -}}
 {{- end -}}
-{{- $resolvedNamespace := coalesce $spcNamespace $appNamespace .Release.Namespace -}}
 {{- $entry := dict -}}
 {{- $entryIdx := .Values.ocpSecretsStoreCsiVault.workloadAuthIndex | default 0 | int -}}
 {{- if lt $entryIdx 0 -}}
@@ -95,6 +94,11 @@ Returns a YAML object with:
     {{- $roleName = printf "%s-sscsi-%s" $roleCluster $roleSlug -}}
   {{- end -}}
 {{- end -}}
+{{- $entryNamespace := "" -}}
+{{- if and $entry (hasKey $entry "namespace") -}}
+  {{- $entryNamespace = (index $entry "namespace" | default "" | toString | trim) -}}
+{{- end -}}
+{{- $resolvedNamespace := coalesce $spcNamespace $entryNamespace $appNamespace .Release.Namespace -}}
 namespace: {{ $resolvedNamespace | quote }}
 serviceAccountName: {{ $serviceAccountName | quote }}
 roleName: {{ $roleName | quote }}
