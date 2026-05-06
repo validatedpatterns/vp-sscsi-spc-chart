@@ -21,6 +21,12 @@ This chart renders **only** `SecretProviderClass` YAML (named templates or optio
 
 This chart does not install the CSI provider or mount trust bundles; set **`tls.vaultCACertPath`** to match whatever path the **provider** exposes (for example under **`/etc/pki/vault-ca`** from **`openshift-sscsi-vault`** defaults).
 
+### Notable changes
+
+#### v0.1.4
+
+- **Hub `roleName` without `auth`:** Hub-style `SecretProviderClass` rendering no longer dereferences `ocpSecretsStoreCsiVault.auth.roleName` when the `auth` block is omitted. Parent charts can omit `ocpSecretsStoreCsiVault.auth` entirely; the template defaults hub `roleName` to `hub-role` (still overridden by `ssCsiWorkloadAuth` when resolved). Previously, `coalesce` evaluated every argument and triggered a nil-pointer error if `auth` was missing.
+
 ### Usage from parent charts
 
 Merge values into this chart shape (`ocpSecretsStoreCsiVault`, `global`, `clusterGroup`) and include:

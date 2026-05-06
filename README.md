@@ -1,12 +1,12 @@
 # vp-sscsi-spc
 
-![Version: 0.1.3](https://img.shields.io/badge/Version-0.1.3-informational?style=flat-square)
+![Version: 0.1.4](https://img.shields.io/badge/Version-0.1.4-informational?style=flat-square)
 
 Library chart for app-level Vault SecretProviderClass rendering with hub, spoke, and external Vault support. Cluster CA material is managed by a separate cluster-wide chart.
 
 This chart is the **library for `SecretProviderClass` only**, **one dependency per application chart** that consumes Vault via SSCSI.
 
-**Vault CSI provider DaemonSet and TLS trust on the provider** (for example projected proxy cluster CA) are installed by **`openshift-sscsi-vault`** (chart **0.2.0+**), not this library. The **`openshift-sscsi-vault`** is provided for this.
+**Vault CSI provider DaemonSet and TLS trust on the provider** (for example projected proxy cluster CA) are installed by **`openshift-sscsi-vault`** (chart **0.1.0+**), not this library.
 
 ### Scope
 
@@ -19,6 +19,12 @@ This chart renders **only** `SecretProviderClass` YAML (named templates or optio
 - Optional app-key driven workload auth lookup from `clusterGroup.applications[*].ssCsiWorkloadAuth`
 
 This chart does not install the CSI provider or mount trust bundles; set **`tls.vaultCACertPath`** to match whatever path the **provider** exposes (for example under **`/etc/pki/vault-ca`** from **`openshift-sscsi-vault`** defaults).
+
+### Notable changes
+
+#### v0.1.4
+
+- **Hub `roleName` without `auth`:** Hub-style `SecretProviderClass` rendering no longer dereferences `ocpSecretsStoreCsiVault.auth.roleName` when the `auth` block is omitted. Parent charts can omit `ocpSecretsStoreCsiVault.auth` entirely; the template defaults hub `roleName` to `hub-role` (still overridden by `ssCsiWorkloadAuth` when resolved). Previously, `coalesce` evaluated every argument and triggered a nil-pointer error if `auth` was missing.
 
 ### Usage from parent charts
 
