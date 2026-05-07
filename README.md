@@ -1,6 +1,6 @@
 # vp-sscsi-spc
 
-![Version: 0.1.6](https://img.shields.io/badge/Version-0.1.6-informational?style=flat-square)
+![Version: 0.1.7](https://img.shields.io/badge/Version-0.1.7-informational?style=flat-square)
 
 Library chart for app-level Vault SecretProviderClass rendering with hub, spoke, and external Vault support. Cluster CA material is managed by a separate cluster-wide chart.
 
