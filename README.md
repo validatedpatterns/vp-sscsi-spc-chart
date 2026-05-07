@@ -42,7 +42,7 @@ When `ocpSecretsStoreCsiVault.applicationKey` is set, the chart reads
 `clusterGroup.applications[applicationKey]` and can derive:
 
 - `metadata.namespace` from app namespace (fallback: release namespace)
-- `spec.parameters.roleName` from `ssCsiWorkloadAuth` (`roleName`/`role` or `cluster + roleSlug`)
+- `spec.parameters.roleName` from `ssCsiWorkloadAuth`: explicit `roleName`/`role`, or **`vaultKubernetesMountPath-sscsi-<roleSlug>`** (same prefix as External Secrets on the cluster: **`hub`** or **`global.clusterDomain`** / spoke FQDN — not the short `cluster` label from clustergroup values)
 
 ### Argo CD ignoreDifferences recommendation
 

@@ -43,7 +43,8 @@ Resolves app-scoped CSI workload auth attributes from clusterGroup.applications.
 Returns a YAML object with:
 - namespace
 - serviceAccountName
-- roleName
+- explicitRoleName (from entry roleName/role, if any)
+- roleSlug (from entry roleSlug/role_slug, if any; SecretProviderClass adds <vaultKubernetesMountPath>-sscsi-<slug>)
 */}}
 {{- define "vp_sscsi_spc.workloadauth" -}}
 {{- $appKey := .Values.ocpSecretsStoreCsiVault.applicationKey | default "" | trim -}}
@@ -74,25 +75,19 @@ Returns a YAML object with:
 {{- if and (eq $serviceAccountName "") $entry (hasKey $entry "serviceAccountName") -}}
   {{- $serviceAccountName = (index $entry "serviceAccountName" | default "" | toString | trim) -}}
 {{- end -}}
-{{- $roleName := "" -}}
+{{- $explicitRoleName := "" -}}
 {{- if and $entry (hasKey $entry "roleName") -}}
-  {{- $roleName = (index $entry "roleName" | default "" | toString | trim) -}}
+  {{- $explicitRoleName = (index $entry "roleName" | default "" | toString | trim) -}}
 {{- end -}}
-{{- if and (eq $roleName "") $entry (hasKey $entry "role") -}}
-  {{- $roleName = (index $entry "role" | default "" | toString | trim) -}}
+{{- if and (eq $explicitRoleName "") $entry (hasKey $entry "role") -}}
+  {{- $explicitRoleName = (index $entry "role" | default "" | toString | trim) -}}
 {{- end -}}
-{{- if and (eq $roleName "") $entry (hasKey $entry "roleSlug") -}}
-  {{- $roleSlug := (index $entry "roleSlug" | default "" | toString | trim) -}}
-  {{- if ne $roleSlug "" -}}
-    {{- $roleCluster := "hub" -}}
-    {{- if and $entry (hasKey $entry "cluster") -}}
-      {{- $roleCluster = (index $entry "cluster" | default "" | toString | trim) -}}
-    {{- end -}}
-    {{- if eq $roleCluster "" -}}
-      {{- $roleCluster = "hub" -}}
-    {{- end -}}
-    {{- $roleName = printf "%s-sscsi-%s" $roleCluster $roleSlug -}}
-  {{- end -}}
+{{- $roleSlug := "" -}}
+{{- if and $entry (hasKey $entry "roleSlug") -}}
+  {{- $roleSlug = (index $entry "roleSlug" | default "" | toString | trim) -}}
+{{- end -}}
+{{- if and (eq $roleSlug "") $entry (hasKey $entry "role_slug") -}}
+  {{- $roleSlug = (index $entry "role_slug" | default "" | toString | trim) -}}
 {{- end -}}
 {{- $entryNamespace := "" -}}
 {{- if and $entry (hasKey $entry "namespace") -}}
@@ -101,7 +96,8 @@ Returns a YAML object with:
 {{- $resolvedNamespace := coalesce $spcNamespace $entryNamespace $appNamespace .Release.Namespace -}}
 namespace: {{ $resolvedNamespace | quote }}
 serviceAccountName: {{ $serviceAccountName | quote }}
-roleName: {{ $roleName | quote }}
+explicitRoleName: {{ $explicitRoleName | quote }}
+roleSlug: {{ $roleSlug | quote }}
 {{- end }}
 
 {{/*
@@ -191,20 +187,31 @@ spec:
 {{- if .Values.ocpSecretsStoreCsiVault.tls.vaultTLSServerName }}
     vaultTLSServerName: {{ .Values.ocpSecretsStoreCsiVault.tls.vaultTLSServerName | quote }}
 {{- end }}
-{{- if $isHubStyleAuth }}
 {{- $hubMountPath := .Values.ocpSecretsStoreCsiVault.vault.hubMountPath | default "" | trim }}
-{{- $localDomain := $.Values.global.localClusterDomain | default "" | trim }}
+{{- $localDomain := coalesce $.Values.global.localClusterDomain $.Values.global.hubClusterDomain | default "" | toString | trim }}
 {{- $hubDomain := $.Values.global.hubClusterDomain | default "" | trim }}
 {{- $defaultHubMountPath := $.Values.global.clusterDomain | default "" | trim }}
 {{- if and (ne $localDomain "") (eq $localDomain $hubDomain) }}
 {{- $defaultHubMountPath = "hub" }}
 {{- end }}
-    vaultKubernetesMountPath: {{ coalesce $hubMountPath $defaultHubMountPath "hub" | quote }}
-    roleName: {{ coalesce $workloadAuth.roleName .Values.ocpSecretsStoreCsiVault.auth.roleName "hub-role" | quote }}
-{{- else }}
-    vaultKubernetesMountPath: {{ $.Values.global.clusterDomain | quote }}
-    roleName: {{ coalesce $workloadAuth.roleName (printf "%s-role" $.Values.global.clusterDomain) | quote }}
+{{- $vaultMountPath := $.Values.global.clusterDomain | default "" | trim }}
+{{- if $isHubStyleAuth }}
+{{- $vaultMountPath = coalesce $hubMountPath $defaultHubMountPath "hub" }}
 {{- end }}
+{{- $explicit := $workloadAuth.explicitRoleName | default "" | toString | trim }}
+{{- $slug := $workloadAuth.roleSlug | default "" | toString | trim }}
+{{- $resolvedRole := $explicit }}
+{{- if eq $resolvedRole "" }}
+{{- if ne $slug "" }}
+{{- $resolvedRole = printf "%s-sscsi-%s" $vaultMountPath $slug }}
+{{- else if $isHubStyleAuth }}
+{{- $resolvedRole = coalesce $.Values.ocpSecretsStoreCsiVault.auth.roleName "hub-role" | toString | trim }}
+{{- else }}
+{{- $resolvedRole = printf "%s-role" $vaultMountPath }}
+{{- end }}
+{{- end }}
+    vaultKubernetesMountPath: {{ $vaultMountPath | quote }}
+    roleName: {{ $resolvedRole | quote }}
     objects: |
 {{- range .Values.ocpSecretsStoreCsiVault.objects }}
       - objectName: {{ .objectName | quote }}
