@@ -44,6 +44,66 @@ When `ocpSecretsStoreCsiVault.applicationKey` is set, the chart reads
 - `metadata.namespace` from app namespace (fallback: release namespace)
 - `spec.parameters.roleName` from `ssCsiWorkloadAuth` (`roleName`/`role` or `cluster + roleSlug`)
 
+### Argo CD ignoreDifferences recommendation
+
+For Argo CD applications that deploy the cluster-wide provider chart used with this library (for example `openshift-sscsi-vault`), add an `ignoreDifferences` block for the provider CA ConfigMap. This follows the pattern used in `~/gitwork/multicloud-gitops` (`values-hub.yaml`, `values-group-one.yaml`), where CNO/proxy bundle injection mutates `.data` after apply.
+
+```yaml
+ignoreDifferences:
+  - group: ""
+    kind: ConfigMap
+    name: openshift-sscsi-vault-vault-tls-ca
+    namespace: vault
+    jsonPointers:
+      - /data
+    jqPathExpressions:
+      - .data
+syncPolicy:
+  syncOptions:
+    - RespectIgnoreDifferences=true
+```
+
+If you are using proxy/cluster CA bundle injection, the `vp-cluster-truster` application (for example `vp-manage-proxy-cluster-ca`) is the common way to manage `Proxy.spec.trustedCA` and the source bundle workflow. It is recommended in that setup so the injected bundle exists consistently.
+
+If you are not using bundle injection and instead provide `tls.vaultCACertPath` from another trust source, `vp-cluster-truster` is not mandatory for this chart.
+
+### Workload timeouts, mount readiness, and retries
+
+Application charts that combine this library with **CSI Secret Provider** mounts, **ConfigMaps**, and **projected** trust bundles should plan for **slow or stuck volume setup** and for **data that exists in API but is not yet usable** on disk. The following applies to **Deployments**, **ReplicaSets** (via the parent Deployment), **Pods**, **Jobs**, **CronJobs**, **StatefulSets**, and **DaemonSets** wherever a Pod template is defined.
+
+**What blocks `ContainerCreating`**
+
+- A **ConfigMap object that exists** usually mounts quickly. Long `ContainerCreating` is more often **image pull**, **scheduling**, or **volume plugins**. **`secrets-store.csi.k8s.io`** mounts can wait on Vault, credentials, or the network.
+- **Wrong or incomplete ConfigMap or secret file content** often still completes the mount; failure appears **after** the main container starts unless you **validate earlier** (see below).
+- **Liveness and readiness probes** run only **after** the container is running; they do not resolve infinite `ContainerCreating`.
+
+**Fail fast on required files (recommended)**
+
+For any workload with a Pod template, add an **init container** (same volumes, minimal image) that checks required paths under the CSI mount, ConfigMap mount, or projected CA path, and **`exit 1`** if anything required is missing or invalid. Optionally wrap checks with a **shell `timeout`** so the init step cannot hang indefinitely. This gives clear failures and works well with **Job `backoffLimit`** or external orchestration retries.
+
+**Kubernetes time limits by resource**
+
+| Goal | Knob |
+|------|------|
+| Rollout stuck (new Pods not becoming Ready) | **Deployment `spec.progressDeadlineSeconds`** |
+| Cap total time for a **Job** | **Job `spec.activeDeadlineSeconds`**, plus **`spec.backoffLimit`** for retries |
+| Bound each **Pod** attempt | **Pod `spec.activeDeadlineSeconds`** (in the Pod template) |
+| CronJob run must not start too late after schedule | **CronJob `spec.startingDeadlineSeconds`** |
+
+**ReplicaSet**: do not tune deadlines on the ReplicaSet directly; set them on the owning **Deployment** (or higher-level controller).
+
+**StatefulSet and DaemonSet**: there is no **`progressDeadlineSeconds`**. Use **Pod `activeDeadlineSeconds`**, **init validation**, and probes (**`startupProbe`** helps slow-but-finite application start, not stuck pre-run mounts).
+
+**CSI and projected volumes**
+
+- Mount and retry behavior is **driver- and provider-specific**; use provider documentation for timeouts and failure modes in addition to the Kubernetes fields above.
+- **`optional: true`** on a **projected** `configMap` source avoids hard failure when that source is absent but can hide “trust bundle not ready”; pair **`optional`** with **init validation** when the file is required for Vault or TLS.
+
+**Argo**
+
+- **Argo CD** reflects **resource health** (for example Deployment **`ProgressDeadlineExceeded`**, Pods not Ready). It does not add volume timeouts; encode limits and checks in the manifests your Application syncs.
+- **Argo Workflows**: use **template `timeout`** and **`retryStrategy`** on steps so a bounded Pod or Job attempt can fail and retry at the workflow layer.
+
 ## Values
 
 | Key | Type | Default | Description |
