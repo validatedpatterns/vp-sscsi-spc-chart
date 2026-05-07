@@ -192,7 +192,14 @@ spec:
     vaultTLSServerName: {{ .Values.ocpSecretsStoreCsiVault.tls.vaultTLSServerName | quote }}
 {{- end }}
 {{- if $isHubStyleAuth }}
-    vaultKubernetesMountPath: {{ .Values.ocpSecretsStoreCsiVault.vault.hubMountPath | quote }}
+{{- $hubMountPath := .Values.ocpSecretsStoreCsiVault.vault.hubMountPath | default "" | trim }}
+{{- $localDomain := $.Values.global.localClusterDomain | default "" | trim }}
+{{- $hubDomain := $.Values.global.hubClusterDomain | default "" | trim }}
+{{- $defaultHubMountPath := $.Values.global.clusterDomain | default "" | trim }}
+{{- if and (ne $localDomain "") (eq $localDomain $hubDomain) }}
+{{- $defaultHubMountPath = "hub" }}
+{{- end }}
+    vaultKubernetesMountPath: {{ coalesce $hubMountPath $defaultHubMountPath "hub" | quote }}
     roleName: {{ coalesce $workloadAuth.roleName .Values.ocpSecretsStoreCsiVault.auth.roleName "hub-role" | quote }}
 {{- else }}
     vaultKubernetesMountPath: {{ $.Values.global.clusterDomain | quote }}

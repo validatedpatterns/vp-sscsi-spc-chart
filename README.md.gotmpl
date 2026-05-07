@@ -13,7 +13,7 @@ This chart is the **library for `SecretProviderClass` only**, **one dependency p
 
 This chart renders **only** `SecretProviderClass` YAML (named templates or optional `installDefaultManifests`). Use it from application charts that need:
 
-- Hub-cluster Vault auth (`hub` mount + role)
+- Hub-cluster Vault auth (defaults `vaultKubernetesMountPath` to `hub` when `global.localClusterDomain == global.hubClusterDomain`, else `global.clusterDomain`; optional `vault.hubMountPath` override, hub role)
 - Spoke-cluster auth to centralized Vault (`clusterDomain` mount + role)
 - External Vault endpoint override (`vault.externalAddress`)
 - Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`), or **`tls.projectedClusterCa.enabled: true`** to derive the path for **openshift-sscsi-vault**'s projected CNO/proxy bundle (same defaults as that chart's `syncProviderCaConfigMap`)

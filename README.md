@@ -1,6 +1,6 @@
 # vp-sscsi-spc
 
-![Version: 0.1.5](https://img.shields.io/badge/Version-0.1.5-informational?style=flat-square)
+![Version: 0.1.6](https://img.shields.io/badge/Version-0.1.6-informational?style=flat-square)
 
 Library chart for app-level Vault SecretProviderClass rendering with hub, spoke, and external Vault support. Cluster CA material is managed by a separate cluster-wide chart.
 
@@ -12,7 +12,7 @@ This chart is the **library for `SecretProviderClass` only**, **one dependency p
 
 This chart renders **only** `SecretProviderClass` YAML (named templates or optional `installDefaultManifests`). Use it from application charts that need:
 
-- Hub-cluster Vault auth (`hub` mount + role)
+- Hub-cluster Vault auth (defaults `vaultKubernetesMountPath` to `hub` when `global.localClusterDomain == global.hubClusterDomain`, else `global.clusterDomain`; optional `vault.hubMountPath` override, hub role)
 - Spoke-cluster auth to centralized Vault (`clusterDomain` mount + role)
 - External Vault endpoint override (`vault.externalAddress`)
 - Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`), or **`tls.projectedClusterCa.enabled: true`** to derive the path for **openshift-sscsi-vault**'s projected CNO/proxy bundle (same defaults as that chart's `syncProviderCaConfigMap`)
@@ -63,7 +63,7 @@ When `ocpSecretsStoreCsiVault.applicationKey` is set, the chart reads
 | ocpSecretsStoreCsiVault.tls.projectedClusterCa | object | `{"enabled":false,"injectTrustedCabundle":true,"keyInConfigMap":"vault-tls-ca.pem","mountDir":"/etc/pki/vault-ca","trustedCabundleDataKey":"ca-bundle.crt"}` | When `enabled` is true and `vaultCACertPath` is empty, set `vaultCACertPath` to the bundle file under **openshift-sscsi-vault** defaults (CNO proxy merge `ca-bundle.crt` vs PEM `vault-tls-ca.pem`). Align these fields with `ocpSecretsStoreCsiVault.caProvider.syncProviderCaConfigMap` on that chart. |
 | ocpSecretsStoreCsiVault.tls.vaultCACertPath | string | `""` | Explicit PEM path on the CSI provider pod. When non-empty, wins over `projectedClusterCa`. |
 | ocpSecretsStoreCsiVault.vault.externalAddress | string | `""` | If non-empty, used as `spec.parameters.vaultAddress` (external Vault endpoint). |
-| ocpSecretsStoreCsiVault.vault.hubMountPath | string | `"hub"` | Vault Kubernetes auth mount path for hub-style auth |
+| ocpSecretsStoreCsiVault.vault.hubMountPath | string | `""` | Optional override for hub-style `vaultKubernetesMountPath`. Empty defaults to `hub` when `global.localClusterDomain == global.hubClusterDomain`, else `global.clusterDomain`. |
 | ocpSecretsStoreCsiVault.workloadAuthIndex | int | `0` | Index into `clusterGroup.applications[applicationKey].ssCsiWorkloadAuth` when multiple entries are present. |
 
 ----------------------------------------------

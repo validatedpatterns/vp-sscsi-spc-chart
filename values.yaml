@@ -19,8 +19,8 @@ ocpSecretsStoreCsiVault:
   vault:
     # -- If non-empty, used as `spec.parameters.vaultAddress` (external Vault endpoint).
     externalAddress: ""
-    # -- Vault Kubernetes auth mount path for hub-style auth
-    hubMountPath: hub
+    # -- Optional override for hub-style `vaultKubernetesMountPath`. Empty defaults to `hub` when `global.localClusterDomain == global.hubClusterDomain`, else `global.clusterDomain`.
+    hubMountPath: ""
 
   auth:
     # -- Vault Kubernetes auth role name for hub-style auth
