@@ -2,51 +2,71 @@
 # -- Settings for app-level SecretProviderClass rendering
 # @default -- see nested keys
 ocpSecretsStoreCsiVault:
-  # -- Optional key under `clusterGroup.applications` used to resolve workload auth attributes (`ssCsiWorkloadAuth`).
+  # -- Optional key under `clusterGroup.applications` used to resolve workload
+  # auth attributes (`ssCsiWorkloadAuth`).
   applicationKey: ""
-  # -- Index into `clusterGroup.applications[applicationKey].ssCsiWorkloadAuth` when multiple entries are present.
+  # -- Index into `clusterGroup.applications[applicationKey].ssCsiWorkloadAuth`
+  # when multiple entries are present.
   workloadAuthIndex: 0
   secretProviderClass:
     # -- When true, render SecretProviderClass manifests from this chart.
     enabled: true
-    # -- When true, render default SPC manifests from `templates/install-default-manifests.yaml`.
+    # -- When true, render default SPC manifests from
+    # `templates/install-default-manifests.yaml`.
     installDefaultManifests: false
-    # -- metadata.name of the SecretProviderClass (referenced from pod volumeAttributes)
+    # -- metadata.name of the SecretProviderClass (referenced from pod
+    # volumeAttributes)
     name: vault-hub-secrets
     # -- Namespace where the SecretProviderClass is created
     namespace: ""
 
   vault:
-    # -- If non-empty, used as `spec.parameters.vaultAddress` (external Vault endpoint).
+    # -- If non-empty, used as `spec.parameters.vaultAddress` (external Vault
+    # endpoint).
     externalAddress: ""
-    # -- Optional override for hub-style `vaultKubernetesMountPath`. Empty defaults to `hub` when `global.localClusterDomain == global.hubClusterDomain`, else `global.clusterDomain`.
+    # -- Optional override for hub-style `vaultKubernetesMountPath`. Empty
+    # defaults to `hub` when
+    # `global.localClusterDomain == global.hubClusterDomain`, else
+    # `global.clusterDomain`.
     hubMountPath: ""
 
   auth:
-    # -- Vault auth method for SecretProviderClass `spec.parameters.authType`. Defaults to `kubernetes`.
+    # -- Vault auth method for SecretProviderClass `spec.parameters.authType`.
+    # Defaults to `kubernetes`.
     method: kubernetes
-    # -- Vault Kubernetes auth role name for hub-style auth (used when `auth.method` is `kubernetes`).
+    # -- Vault Kubernetes auth role name for hub-style auth (used when
+    # `auth.method` is `kubernetes`).
     roleName: hub-role
-    # -- Extra auth parameters merged into `spec.parameters` for non-kubernetes methods (for example AppRole, JWT, token). Keys/values are passed through as provided.
-    extraParameters: {}
+    # -- Extra auth parameters merged into `spec.parameters` for non-kubernetes
+    # methods (for example AppRole, JWT, token). Keys/values are passed through
+    # as provided.
+    extraParameters: { }
 
-  # -- KV objects to expose as files under the CSI mount (Vault CSI `objects` list)
+  # -- KV objects to expose as files under the CSI mount (Vault CSI `objects`
+  # list)
   # @default -- example placeholder; replace with your paths
   objects:
     - objectName: example-password
       secretPath: secret/data/example/app
       secretKey: password
 
-  # -- Optional: sync mounted objects into native Kubernetes Secrets (CSI `secretObjects`)
-  secretObjects: []
+  # -- Optional: sync mounted objects into native Kubernetes Secrets (CSI
+  # `secretObjects`)
+  secretObjects: [ ]
 
-  # -- TLS options for the Vault CSI provider. This chart only references an existing trust path and does not create CA material.
+  # -- TLS options for the Vault CSI provider. This chart only references an
+  # existing trust path and does not create CA material.
   tls:
     vaultSkipTLSVerify: "false"
-    # -- Explicit PEM path on the CSI provider pod. When non-empty, wins over `projectedClusterCa`.
+    # -- Explicit PEM path on the CSI provider pod. When non-empty, wins over
+    # `projectedClusterCa`.
     vaultCACertPath: ""
     vaultTLSServerName: ""
-    # -- When `enabled` is true and `vaultCACertPath` is empty, set `vaultCACertPath` to the bundle file under **openshift-sscsi-vault** defaults (CNO proxy merge `ca-bundle.crt` vs PEM `vault-tls-ca.pem`). Align these fields with `ocpSecretsStoreCsiVault.caProvider.syncProviderCaConfigMap` on that chart.
+    # -- When `enabled` is true and `vaultCACertPath` is empty, set
+    # `vaultCACertPath` to the bundle file under **openshift-sscsi-vault**
+    # defaults (CNO proxy merge `ca-bundle.crt` vs PEM `vault-tls-ca.pem`).
+    # Align these fields with
+    # `ocpSecretsStoreCsiVault.caProvider.syncProviderCaConfigMap` on that chart.
     projectedClusterCa:
       enabled: false
       mountDir: "/etc/pki/vault-ca"
@@ -58,8 +78,13 @@ ocpSecretsStoreCsiVault:
 global:
   hubClusterDomain: hub.example.com
   clusterDomain: foo.example.com
-  # -- On spokes (non-hub), rendered as `spec.parameters.vaultKubernetesMountPath` (and default Kubernetes role prefix) unless it equals `hubClusterDomain`, in which case the mount path is `hub`. Hub clusters use hub-style mount logic instead. Set this to the spoke apps/API domain (for example `apps.cluster.example.com`).
+  # -- On spokes (non-hub), rendered as `spec.parameters.vaultKubernetesMountPath`
+  # unless it equals `hubClusterDomain`, in which case the mount path is `hub`.
+  # Hub clusters use hub-style mount logic instead. Set this to the spoke
+  # apps/API domain (for example `apps.cluster.example.com`). Default Kubernetes
+  # `roleName` prefixes use `global.clusterDomain` (aligned with
+  # openshift-external-secrets), not this field.
   localClusterDomain: ""
 
 clusterGroup:
-  applications: {}
+  applications: { }

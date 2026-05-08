@@ -19,3 +19,6 @@ tags
 [._]*.un~
 
 .vscode/
+
+# Super-Linter (Trivy DB cache when RUN_LOCAL with restricted container HOME)
+.trivy-cache/

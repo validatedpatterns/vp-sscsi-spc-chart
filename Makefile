@@ -1,6 +1,9 @@
 # https://hub.docker.com/r/helmunittest/helm-unittest/tags/
 HELM_UNITTEST_IMAGE ?= docker.io/helmunittest/helm-unittest:3.14.4-0.5.0
 HELM_DOCS_IMAGE ?= docker.io/jnorwood/helm-docs:latest
+# https://github.com/super-linter/super-linter/pkgs/container/super-linter
+SUPER_LINTER_IMAGE ?= ghcr.io/super-linter/super-linter:slim-v8.1.0
+SUPER_LINTER_DEFAULT_BRANCH ?= main
 
 PWD=$(shell pwd)
 MYNAME=$(shell id -n -u)
@@ -27,3 +30,17 @@ helm-docs: ## Generates README.md from values.yaml
 
 .PHONY: test
 test: helm-lint helm-unittest ## Runs helm lint and unit tests
+
+##@ Linting
+
+.PHONY: super-linter
+super-linter: ## Runs GitHub Super-Linter locally (.github/super-linter.env)
+	@mkdir -p $(PWD)/.trivy-cache
+	podman run $(PODMAN_ARGS) \
+		-e RUN_LOCAL=true \
+		-e DEFAULT_BRANCH=$(SUPER_LINTER_DEFAULT_BRANCH) \
+		-e USE_FIND_ALGORITHM=true \
+		-e TRIVY_CACHE_DIR=/tmp/lint/.trivy-cache \
+		--env-file .github/super-linter.env \
+		-v $(PWD):/tmp/lint:rw,Z \
+		$(SUPER_LINTER_IMAGE)

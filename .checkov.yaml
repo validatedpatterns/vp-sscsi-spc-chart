@@ -1,3 +1,5 @@
-# Helm unittest fixtures use realistic-looking secretRef/roleId strings; skip secret scan noise.
+---
+# Helm unittest fixtures use realistic-looking secretRef/roleId strings;
+# skip secret scan noise.
 skip-path:
   - tests/

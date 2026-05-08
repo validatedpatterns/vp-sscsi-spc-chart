@@ -1,10 +1,11 @@
 ---
 apiVersion: v2
 name: vp-sscsi-spc
-version: 0.1.9
+version: 0.1.11
 description: >-
-  Library chart for app-level Vault SecretProviderClass rendering with hub, spoke, and
-  external Vault support. Cluster CA material is managed by a separate cluster-wide chart.
+  Library chart for app-level Vault SecretProviderClass rendering with hub,
+  spoke, and external Vault support. Cluster CA material is managed by a
+  separate cluster-wide chart.
 keywords:
   - openshift
   - secrets-store-csi-driver

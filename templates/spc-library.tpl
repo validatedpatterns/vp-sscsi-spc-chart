@@ -44,7 +44,7 @@ Returns a YAML object with:
 - namespace
 - serviceAccountName
 - explicitRoleName (from entry roleName/role, if any)
-- roleSlug (from entry roleSlug/role_slug, if any; SecretProviderClass adds <vaultKubernetesMountPath>-sscsi-<slug>)
+- roleSlug (from entry roleSlug/role_slug, if any; hub: hub-sscsi-<slug>; spoke: <global.clusterDomain>-sscsi-<slug>, falling back to mount path if clusterDomain is empty)
 */}}
 {{- define "vp_sscsi_spc.workloadauth" -}}
 {{- $appKey := .Values.ocpSecretsStoreCsiVault.applicationKey | default "" | trim -}}
@@ -190,6 +190,13 @@ spec:
 {{- else if and (ne $vaultMountPath "") (ne $hubDomain "") (eq $vaultMountPath $hubDomain) }}
 {{- $vaultMountPath = "hub" }}
 {{- end }}
+{{- $roleNamePrefix := "hub" }}
+{{- if not $isHubStyleAuth }}
+{{- $roleNamePrefix = $.Values.global.clusterDomain | default "" | toString | trim }}
+{{- if eq $roleNamePrefix "" }}
+{{- $roleNamePrefix = $vaultMountPath }}
+{{- end }}
+{{- end }}
 {{- $authMethod := .Values.ocpSecretsStoreCsiVault.auth.method | default "kubernetes" | toString | trim | lower }}
 {{- if eq $authMethod "" }}
 {{- $authMethod = "kubernetes" }}
@@ -199,11 +206,11 @@ spec:
 {{- $resolvedRole := $explicit }}
 {{- if eq $resolvedRole "" }}
 {{- if ne $slug "" }}
-{{- $resolvedRole = printf "%s-sscsi-%s" $vaultMountPath $slug }}
+{{- $resolvedRole = printf "%s-sscsi-%s" $roleNamePrefix $slug }}
 {{- else if $isHubStyleAuth }}
 {{- $resolvedRole = coalesce $.Values.ocpSecretsStoreCsiVault.auth.roleName "hub-role" | toString | trim }}
 {{- else }}
-{{- $resolvedRole = printf "%s-role" $vaultMountPath }}
+{{- $resolvedRole = printf "%s-role" $roleNamePrefix }}
 {{- end }}
 {{- end }}
     authType: {{ $authMethod | quote }}
