@@ -1,11 +1,12 @@
 # vp-sscsi-spc
 
-![Version: 0.1.8](https://img.shields.io/badge/Version-0.1.8-informational?style=flat-square)
+![Version: 0.1.9](https://img.shields.io/badge/Version-0.1.9-informational?style=flat-square)
 
 Library chart for app-level Vault SecretProviderClass rendering with hub, spoke, and external Vault support. Cluster CA material is managed by a separate cluster-wide chart.
 
 ### Notable changes
 
+* v0.1.9: Spoke `SecretProviderClass` no longer treats `clusterGroup.applications` entries with `chart: hashicorp-vault` as hub-style auth (which forced `vaultKubernetesMountPath: hub` when `localClusterDomain` was unset). On spokes, `spec.parameters.vaultKubernetesMountPath` is `global.localClusterDomain` when it differs from `global.hubClusterDomain`, and **`hub`** when they are equal; hub clusters keep hub-style mount logic.
 * v0.1.8: Added arbitrary Vault connection/auth configuration through values:
   `vault.externalAddress` for custom endpoints, `auth.method` for selecting the
   provider auth type, and `auth.extraParameters` to pass provider-specific auth
@@ -22,7 +23,7 @@ This chart is the **library for `SecretProviderClass` only**, **one dependency p
 This chart renders **only** `SecretProviderClass` YAML (named templates or optional `installDefaultManifests`). Use it from application charts that need:
 
 - Hub-cluster Vault auth (defaults `vaultKubernetesMountPath` to `hub` when `global.localClusterDomain == global.hubClusterDomain`, else `global.clusterDomain`; optional `vault.hubMountPath` override, hub role)
-- Spoke-cluster auth to centralized Vault (`clusterDomain` mount + role)
+- Spoke-cluster auth to centralized Vault (`global.localClusterDomain` as `vaultKubernetesMountPath`, or **`hub`** when it equals `global.hubClusterDomain`; default role prefix follows the same rule)
 - External Vault endpoint override (`vault.externalAddress`)
 - Auth method override via values (`auth.method`, default `kubernetes`) plus pass-through auth parameters (`auth.extraParameters`) for non-kubernetes schemes
 - Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`), or **`tls.projectedClusterCa.enabled: true`** to derive the path for **openshift-sscsi-vault**'s projected CNO/proxy bundle (same defaults as that chart's `syncProviderCaConfigMap`)
@@ -52,7 +53,7 @@ When `ocpSecretsStoreCsiVault.applicationKey` is set, the chart reads
 `clusterGroup.applications[applicationKey]` and can derive:
 
 - `metadata.namespace` from app namespace (fallback: release namespace)
-- `spec.parameters.roleName` from `ssCsiWorkloadAuth`: explicit `roleName`/`role`, or **`vaultKubernetesMountPath-sscsi-<roleSlug>`** (same prefix as External Secrets on the cluster: **`hub`** or **`global.clusterDomain`** / spoke FQDN — not the short `cluster` label from clustergroup values)
+- `spec.parameters.roleName` from `ssCsiWorkloadAuth`: explicit `roleName`/`role`, or **`vaultKubernetesMountPath-sscsi-<roleSlug>`** (on spokes, `vaultKubernetesMountPath` matches **`global.localClusterDomain`** except **`hub`** when that equals **`global.hubClusterDomain`**; on the hub, **`hub`** or **`global.clusterDomain`** per hub rules — not the short `cluster` label from clustergroup values)
 
 For `auth.method: kubernetes` (default), this chart emits `vaultKubernetesMountPath` and `roleName`.
 For other auth methods, set `auth.method` and provide the provider-specific fields in `auth.extraParameters`.
@@ -123,6 +124,7 @@ For any workload with a Pod template, add an **init container** (same volumes, m
 |-----|------|---------|-------------|
 | clusterGroup.applications | object | `{}` |  |
 | global | object | `{"clusterDomain":"foo.example.com","hubClusterDomain":"hub.example.com","localClusterDomain":""}` | Global values aligned with openshift-external-secrets chart patterns |
+| global.localClusterDomain | string | `""` | On spokes (non-hub), rendered as `spec.parameters.vaultKubernetesMountPath` (and default Kubernetes role prefix) unless it equals `hubClusterDomain`, in which case the mount path is `hub`. Hub clusters use hub-style mount logic instead. Set this to the spoke apps/API domain (for example `apps.cluster.example.com`). |
 | ocpSecretsStoreCsiVault | object | see nested keys | Settings for app-level SecretProviderClass rendering |
 | ocpSecretsStoreCsiVault.applicationKey | string | `""` | Optional key under `clusterGroup.applications` used to resolve workload auth attributes (`ssCsiWorkloadAuth`). |
 | ocpSecretsStoreCsiVault.auth.extraParameters | object | `{}` | Extra auth parameters merged into `spec.parameters` for non-kubernetes methods (for example AppRole, JWT, token). Keys/values are passed through as provided. |

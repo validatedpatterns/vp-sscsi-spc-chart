@@ -1,5 +1,10 @@
 ---
 default: true
 
+# README is helm-docs generated; chart templates use ### sections and dash lists.
+MD001: false
+MD004: false
+MD036: false
+
 MD013:
   line_length: 600

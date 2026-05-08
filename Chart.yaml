@@ -1,7 +1,7 @@
 ---
 apiVersion: v2
 name: vp-sscsi-spc
-version: 0.1.8
+version: 0.1.9
 description: >-
   Library chart for app-level Vault SecretProviderClass rendering with hub, spoke, and
   external Vault support. Cluster CA material is managed by a separate cluster-wide chart.

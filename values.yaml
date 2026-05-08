@@ -58,6 +58,7 @@ ocpSecretsStoreCsiVault:
 global:
   hubClusterDomain: hub.example.com
   clusterDomain: foo.example.com
+  # -- On spokes (non-hub), rendered as `spec.parameters.vaultKubernetesMountPath` (and default Kubernetes role prefix) unless it equals `hubClusterDomain`, in which case the mount path is `hub`. Hub clusters use hub-style mount logic instead. Set this to the spoke apps/API domain (for example `apps.cluster.example.com`).
   localClusterDomain: ""
 
 clusterGroup:

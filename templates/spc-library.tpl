@@ -129,17 +129,7 @@ Expects standard Helm root context with .Values.ocpSecretsStoreCsiVault, .Values
 {{- define "vp_sscsi_spc.secretproviderclass" -}}
 {{- if .Values.ocpSecretsStoreCsiVault.secretProviderClass.enabled }}
 {{- $workloadAuth := include "vp_sscsi_spc.workloadauth" . | fromYaml }}
-{{- $hashicorp_vault_found := false }}
-{{- if and .Values.clusterGroup .Values.clusterGroup.applications }}
-{{- range $_, $app := .Values.clusterGroup.applications }}
-  {{- if $app }}
-    {{- if eq $app.chart "hashicorp-vault" }}
-      {{- $hashicorp_vault_found = true }}
-    {{- end }}
-  {{- end }}
-{{- end }}
-{{- end }}
-{{- $isHubStyleAuth := or (eq (include "vp_sscsi_spc.ishubcluster" .) "true") $hashicorp_vault_found }}
+{{- $isHubStyleAuth := eq (include "vp_sscsi_spc.ishubcluster" .) "true" }}
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
@@ -194,9 +184,11 @@ spec:
 {{- if and (ne $localDomain "") (eq $localDomain $hubDomain) }}
 {{- $defaultHubMountPath = "hub" }}
 {{- end }}
-{{- $vaultMountPath := $.Values.global.clusterDomain | default "" | trim }}
+{{- $vaultMountPath := $.Values.global.localClusterDomain | default "" | toString | trim }}
 {{- if $isHubStyleAuth }}
 {{- $vaultMountPath = coalesce $hubMountPath $defaultHubMountPath "hub" }}
+{{- else if and (ne $vaultMountPath "") (ne $hubDomain "") (eq $vaultMountPath $hubDomain) }}
+{{- $vaultMountPath = "hub" }}
 {{- end }}
 {{- $authMethod := .Values.ocpSecretsStoreCsiVault.auth.method | default "kubernetes" | toString | trim | lower }}
 {{- if eq $authMethod "" }}
