@@ -184,10 +184,10 @@ spec:
 {{- if and (ne $localDomain "") (eq $localDomain $hubDomain) }}
 {{- $defaultHubMountPath = "hub" }}
 {{- end }}
-{{- $vaultMountPath := $.Values.global.localClusterDomain | default "" | toString | trim }}
+{{- $vaultMountPath := $.Values.global.clusterDomain | default "" | toString | trim }}
 {{- if $isHubStyleAuth }}
 {{- $vaultMountPath = coalesce $hubMountPath $defaultHubMountPath "hub" }}
-{{- else if and (ne $vaultMountPath "") (ne $hubDomain "") (eq $vaultMountPath $hubDomain) }}
+{{- else if and (ne $hubDomain "") (eq $localDomain $hubDomain) }}
 {{- $vaultMountPath = "hub" }}
 {{- end }}
 {{- $roleNamePrefix := "hub" }}

@@ -4,6 +4,8 @@ HELM_DOCS_IMAGE ?= docker.io/jnorwood/helm-docs:latest
 # https://github.com/super-linter/super-linter/pkgs/container/super-linter
 SUPER_LINTER_IMAGE ?= ghcr.io/super-linter/super-linter:slim-v8.1.0
 SUPER_LINTER_DEFAULT_BRANCH ?= main
+# Keep Trivy DB outside the mounted workspace so Gitleaks/JSCPD do not scan downloaded artifacts.
+SUPER_LINTER_TRIVY_CACHE ?= $(HOME)/.cache/vp-sscsi-spc-super-linter-trivy
 
 PWD=$(shell pwd)
 MYNAME=$(shell id -n -u)
@@ -35,12 +37,13 @@ test: helm-lint helm-unittest ## Runs helm lint and unit tests
 
 .PHONY: super-linter
 super-linter: ## Runs GitHub Super-Linter locally (.github/super-linter.env)
-	@mkdir -p $(PWD)/.trivy-cache
+	@mkdir -p $(SUPER_LINTER_TRIVY_CACHE)
 	podman run $(PODMAN_ARGS) \
 		-e RUN_LOCAL=true \
 		-e DEFAULT_BRANCH=$(SUPER_LINTER_DEFAULT_BRANCH) \
 		-e USE_FIND_ALGORITHM=true \
-		-e TRIVY_CACHE_DIR=/tmp/lint/.trivy-cache \
+		-e TRIVY_CACHE_DIR=/trivy-cache \
 		--env-file .github/super-linter.env \
+		-v $(SUPER_LINTER_TRIVY_CACHE):/trivy-cache:rw,Z \
 		-v $(PWD):/tmp/lint:rw,Z \
 		$(SUPER_LINTER_IMAGE)

@@ -76,14 +76,18 @@ ocpSecretsStoreCsiVault:
 
 # -- Global values aligned with openshift-external-secrets chart patterns
 global:
+  # -- Hub Vault route host suffix (`vault-vault.<hubClusterDomain>`). Use the apps/API
+  # ingress form (for example `apps.hub.example.com`), same style as localClusterDomain.
   hubClusterDomain: hub.example.com
+  # -- Vault Kubernetes auth role prefix on spokes (`<clusterDomain>-role`,
+  # `<clusterDomain>-sscsi-<slug>`). In validated patterns this matches
+  # **clustergroup-chart** `global.clusterDomain`: cluster FQDN **without** the
+  # `apps.` component (framework-set). See `localClusterDomain` for the apps form.
   clusterDomain: foo.example.com
-  # -- On spokes (non-hub), rendered as `spec.parameters.vaultKubernetesMountPath`
-  # unless it equals `hubClusterDomain`, in which case the mount path is `hub`.
-  # Hub clusters use hub-style mount logic instead. Set this to the spoke
-  # apps/API domain (for example `apps.cluster.example.com`). Default Kubernetes
-  # `roleName` prefixes use `global.clusterDomain` (aligned with
-  # openshift-external-secrets), not this field.
+  # -- Apps/API ingress FQDN (with `apps.`). Compared to `hubClusterDomain` for
+  # hub vs spoke detection; when equal to `hubClusterDomain`, spoke
+  # `vaultKubernetesMountPath` is `hub`. Spoke mount path is otherwise
+  # `global.clusterDomain` (without `apps.`), not this field.
   localClusterDomain: ""
 
 clusterGroup:
