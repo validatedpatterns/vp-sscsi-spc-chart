@@ -1,8 +1,17 @@
 # vp-sscsi-spc
 
-![Version: 0.1.7](https://img.shields.io/badge/Version-0.1.7-informational?style=flat-square)
+![Version: 0.1.8](https://img.shields.io/badge/Version-0.1.8-informational?style=flat-square)
 
 Library chart for app-level Vault SecretProviderClass rendering with hub, spoke, and external Vault support. Cluster CA material is managed by a separate cluster-wide chart.
+
+### Notable changes
+
+* v0.1.8: Added arbitrary Vault connection/auth configuration through values:
+  `vault.externalAddress` for custom endpoints, `auth.method` for selecting the
+  provider auth type, and `auth.extraParameters` to pass provider-specific auth
+  fields (for example JWT/AppRole/token). Kubernetes defaults remain unchanged,
+  including hub/spoke role-name conventions based on `hub` and
+  `global.clusterDomain`.
 
 This chart is the **library for `SecretProviderClass` only**, **one dependency per application chart** that consumes Vault via SSCSI.
 
@@ -15,6 +24,7 @@ This chart renders **only** `SecretProviderClass` YAML (named templates or optio
 - Hub-cluster Vault auth (defaults `vaultKubernetesMountPath` to `hub` when `global.localClusterDomain == global.hubClusterDomain`, else `global.clusterDomain`; optional `vault.hubMountPath` override, hub role)
 - Spoke-cluster auth to centralized Vault (`clusterDomain` mount + role)
 - External Vault endpoint override (`vault.externalAddress`)
+- Auth method override via values (`auth.method`, default `kubernetes`) plus pass-through auth parameters (`auth.extraParameters`) for non-kubernetes schemes
 - Optional reference to a pre-mounted CA path (`tls.vaultCACertPath`), or **`tls.projectedClusterCa.enabled: true`** to derive the path for **openshift-sscsi-vault**'s projected CNO/proxy bundle (same defaults as that chart's `syncProviderCaConfigMap`)
 - Optional app-key driven workload auth lookup from `clusterGroup.applications[*].ssCsiWorkloadAuth`
 
@@ -43,6 +53,9 @@ When `ocpSecretsStoreCsiVault.applicationKey` is set, the chart reads
 
 - `metadata.namespace` from app namespace (fallback: release namespace)
 - `spec.parameters.roleName` from `ssCsiWorkloadAuth`: explicit `roleName`/`role`, or **`vaultKubernetesMountPath-sscsi-<roleSlug>`** (same prefix as External Secrets on the cluster: **`hub`** or **`global.clusterDomain`** / spoke FQDN — not the short `cluster` label from clustergroup values)
+
+For `auth.method: kubernetes` (default), this chart emits `vaultKubernetesMountPath` and `roleName`.
+For other auth methods, set `auth.method` and provide the provider-specific fields in `auth.extraParameters`.
 
 ### Argo CD ignoreDifferences recommendation
 
@@ -112,7 +125,9 @@ For any workload with a Pod template, add an **init container** (same volumes, m
 | global | object | `{"clusterDomain":"foo.example.com","hubClusterDomain":"hub.example.com","localClusterDomain":""}` | Global values aligned with openshift-external-secrets chart patterns |
 | ocpSecretsStoreCsiVault | object | see nested keys | Settings for app-level SecretProviderClass rendering |
 | ocpSecretsStoreCsiVault.applicationKey | string | `""` | Optional key under `clusterGroup.applications` used to resolve workload auth attributes (`ssCsiWorkloadAuth`). |
-| ocpSecretsStoreCsiVault.auth.roleName | string | `"hub-role"` | Vault Kubernetes auth role name for hub-style auth |
+| ocpSecretsStoreCsiVault.auth.extraParameters | object | `{}` | Extra auth parameters merged into `spec.parameters` for non-kubernetes methods (for example AppRole, JWT, token). Keys/values are passed through as provided. |
+| ocpSecretsStoreCsiVault.auth.method | string | `"kubernetes"` | Vault auth method for SecretProviderClass `spec.parameters.authType`. Defaults to `kubernetes`. |
+| ocpSecretsStoreCsiVault.auth.roleName | string | `"hub-role"` | Vault Kubernetes auth role name for hub-style auth (used when `auth.method` is `kubernetes`). |
 | ocpSecretsStoreCsiVault.objects | list | example placeholder; replace with your paths | KV objects to expose as files under the CSI mount (Vault CSI `objects` list) |
 | ocpSecretsStoreCsiVault.secretObjects | list | `[]` | Optional: sync mounted objects into native Kubernetes Secrets (CSI `secretObjects`) |
 | ocpSecretsStoreCsiVault.secretProviderClass.enabled | bool | `true` | When true, render SecretProviderClass manifests from this chart. |

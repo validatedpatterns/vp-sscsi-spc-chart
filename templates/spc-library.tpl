@@ -198,6 +198,10 @@ spec:
 {{- if $isHubStyleAuth }}
 {{- $vaultMountPath = coalesce $hubMountPath $defaultHubMountPath "hub" }}
 {{- end }}
+{{- $authMethod := .Values.ocpSecretsStoreCsiVault.auth.method | default "kubernetes" | toString | trim | lower }}
+{{- if eq $authMethod "" }}
+{{- $authMethod = "kubernetes" }}
+{{- end }}
 {{- $explicit := $workloadAuth.explicitRoleName | default "" | toString | trim }}
 {{- $slug := $workloadAuth.roleSlug | default "" | toString | trim }}
 {{- $resolvedRole := $explicit }}
@@ -210,8 +214,14 @@ spec:
 {{- $resolvedRole = printf "%s-role" $vaultMountPath }}
 {{- end }}
 {{- end }}
+    authType: {{ $authMethod | quote }}
+{{- if eq $authMethod "kubernetes" }}
     vaultKubernetesMountPath: {{ $vaultMountPath | quote }}
     roleName: {{ $resolvedRole | quote }}
+{{- end }}
+{{- with .Values.ocpSecretsStoreCsiVault.auth.extraParameters }}
+{{ toYaml . | nindent 4 }}
+{{- end }}
     objects: |
 {{- range .Values.ocpSecretsStoreCsiVault.objects }}
       - objectName: {{ .objectName | quote }}

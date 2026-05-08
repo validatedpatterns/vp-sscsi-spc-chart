@@ -23,8 +23,12 @@ ocpSecretsStoreCsiVault:
     hubMountPath: ""
 
   auth:
-    # -- Vault Kubernetes auth role name for hub-style auth
+    # -- Vault auth method for SecretProviderClass `spec.parameters.authType`. Defaults to `kubernetes`.
+    method: kubernetes
+    # -- Vault Kubernetes auth role name for hub-style auth (used when `auth.method` is `kubernetes`).
     roleName: hub-role
+    # -- Extra auth parameters merged into `spec.parameters` for non-kubernetes methods (for example AppRole, JWT, token). Keys/values are passed through as provided.
+    extraParameters: {}
 
   # -- KV objects to expose as files under the CSI mount (Vault CSI `objects` list)
   # @default -- example placeholder; replace with your paths
