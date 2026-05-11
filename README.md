@@ -1,11 +1,13 @@
 # vp-sscsi-spc
 
-![Version: 0.1.12](https://img.shields.io/badge/Version-0.1.12-informational?style=flat-square)
+![Version: 0.1.13](https://img.shields.io/badge/Version-0.1.13-informational?style=flat-square)
 
 Library chart for app-level Vault SecretProviderClass rendering with hub, spoke, and external Vault support. Cluster CA material is managed by a separate cluster-wide chart.
 
 ### Notable changes
 
+* v0.1.13: Remove the cluster: key entirely as the prefix for roles should always be either "hub" or **`global.cclusterDomain`** (for spokes), and we know which we are dealing with based on clusterGroup.
+* v0.1.12: On **spoke** clusters, `spec.parameters.vaultKubernetesMountPath` is **`global.clusterDomain`** (FQDN **without** `apps.`), not **`global.localClusterDomain`**. It remains **`hub`** when **`global.localClusterDomain == global.hubClusterDomain`**. Hub clusters are unchanged.
 * v0.1.12: On **spoke** clusters, `spec.parameters.vaultKubernetesMountPath` is **`global.clusterDomain`** (FQDN **without** `apps.`), not **`global.localClusterDomain`**. It remains **`hub`** when **`global.localClusterDomain == global.hubClusterDomain`**. Hub clusters are unchanged.
 * v0.1.11: On **spoke** clusters, default Kubernetes `roleName` uses **`global.clusterDomain`** (`<clusterDomain>-role` and `<clusterDomain>-sscsi-<roleSlug>`), matching openshift-external-secrets. On the **hub**, computed roles remain **`hub-role`** and **`hub-sscsi-<roleSlug>`** (always the **`hub`** prefix). If `global.clusterDomain` is empty on a spoke, the role prefix falls back to the computed mount path.
 * v0.1.9: Spoke `SecretProviderClass` no longer treats `clusterGroup.applications` entries with `chart: hashicorp-vault` as hub-style auth (which forced `vaultKubernetesMountPath: hub` when `global.localClusterDomain` was unset). Hub clusters keep hub-style mount logic.
@@ -59,7 +61,7 @@ When `ocpSecretsStoreCsiVault.applicationKey` is set, the chart reads
 `clusterGroup.applications[applicationKey]` and can derive:
 
 - `metadata.namespace` from app namespace (fallback: release namespace)
-- `spec.parameters.roleName` from `ssCsiWorkloadAuth`: explicit `roleName`/`role`, or on the hub **`hub-sscsi-<roleSlug>`** / **`hub-role`**, on spokes **`global.clusterDomain-sscsi-<roleSlug>`** / **`global.clusterDomain-role`** (spoke fallback to mount path if `clusterDomain` is empty). `vaultKubernetesMountPath` on spokes is **`global.clusterDomain`** (or **`hub`** when local and hub domains match) — not the short `cluster` label from clustergroup values
+- `spec.parameters.roleName` from `ssCsiWorkloadAuth`: explicit `roleName`/`role`, or on the hub **`hub-sscsi-<roleSlug>`** / **`hub-role`**, on spokes **`global.clusterDomain-sscsi-<roleSlug>`** / **`global.clusterDomain-role`** (spoke fallback to mount path if `clusterDomain` is empty). `vaultKubernetesMountPath` on spokes is **`global.clusterDomain`** (or **`hub`** when local and hub domains match)
 
 For `auth.method: kubernetes` (default), this chart emits `vaultKubernetesMountPath` and `roleName`.
 For other auth methods, set `auth.method` and provide the provider-specific fields in `auth.extraParameters`.
